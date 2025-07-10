@@ -1,7 +1,7 @@
 # TESS_PRF
 Tools to display the TESS pixel response function (PRF) at any location on the detector.
 
-By default, will access the relevant [PRF files on MAST](https://heasarc.gsfc.nasa.gov/docs/tess/observing-technical.html#point-spread-function) (internet required), but you can also download these files and reference their local directory.  There is also an option to generate a 2D Gaussian PRF, however appropriate that may be.
+By default, will access the relevant [PRF files on MAST](https://heasarc.gsfc.nasa.gov/docs/tess/telescope_information.html) (internet required), but you can also download these files and reference their local directory.  There is also an option to generate a 2D Gaussian PRF, however appropriate that may be.
 
 This package is primarily for estimating how the light from a point source is distributed given its position in a TESS Target Pixel File (TPF) or [TESScut](https://mast.stsci.edu/tesscut/) postage stamp. Referencing the real TESS PRF models, you'll need to provide the Camera, CCD, and Sector numbers, along with the column and row numbers at approximately the center of your TPF to interpolate a PRF appropriate for that postage stamp.  This package assumes the PRF doesn't change considerably within a small TPF.  You can then position the PRF model by passing the relative row and column location within the TPF to the "resample" method. The pixel locations follow WCS convention, that an integer value corresponds to the center of a pixel.
 

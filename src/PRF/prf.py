@@ -74,28 +74,43 @@ class TESS_PRF:
         cols = np.array([int(file[-9:-5]) for file in filelist])
         rows = np.array([int(file[-17:-13]) for file in filelist])
 
-        #Bilinear interpolation between four surrounding PRFs
-        LL = np.where((rows < rownum) & (cols < colnum))[0] #lower left
-        LR = np.where((rows > rownum) & (cols < colnum))[0] #lower right
-        UL = np.where((rows < rownum) & (cols > colnum))[0] #upper left
-        UR = np.where((rows > rownum) & (cols > colnum))[0] #uppper right
-        dist = np.sqrt((rows-rownum)**2. + (cols-colnum)**2.)
-        surroundinginds = [subset[np.argmin(dist[subset])] for subset in [LL,LR,UL,UR]]
-        #Following https://stackoverflow.com/a/8662355
-        points = []
-        for ind in surroundinginds:
-            hdulist = fits.open(filelist[ind])
-            prf = hdulist[0].data
-            points.append((cols[ind],rows[ind],prf))
+        # Check for exact match
+        exact_match_idx = np.where((rows == rownum) & (cols == colnum))[0]
+        if len(exact_match_idx) > 0:
+            hdulist = fits.open(filelist[exact_match_idx[0]])
+            self.prf = hdulist[0].data
             hdulist.close()
-        points = sorted(points)
-        (x1, y1, q11), (_x1, y2, q12), (x2, _y1, q21), (_x2, _y2, q22) = points
+        else:
+            # Bilinear interpolation between four surrounding PRFs
+            LL = np.where((rows < rownum) & (cols < colnum))[0] #lower left
+            LR = np.where((rows > rownum) & (cols < colnum))[0] #lower right
+            UL = np.where((rows < rownum) & (cols > colnum))[0] #upper left
+            UR = np.where((rows > rownum) & (cols > colnum))[0] #uppper right
 
-        self.prf = (q11 * (x2 - colnum) * (y2 - rownum) +
-                    q21 * (colnum - x1) * (y2 -  rownum) +
-                    q12 * (x2 - colnum) * ( rownum - y1) +
-                    q22 * (colnum - x1) * ( rownum - y1)
-                    ) / ((x2 - x1) * (y2 - y1) + 0.0)
+            # Handle cases where the point is on a line between PRFs
+            if not np.all([len(s) > 0 for s in [LL, LR, UL, UR]]):
+                # Simplified logic: find 4 nearest neighbors regardless of quadrant
+                dist = np.sqrt((rows - rownum)**2. + (cols - colnum)**2.)
+                surroundinginds = np.argsort(dist)[:4]
+            else:
+                dist = np.sqrt((rows-rownum)**2. + (cols-colnum)**2.)
+                surroundinginds = [subset[np.argmin(dist[subset])] for subset in [LL,LR,UL,UR]]
+
+            #Following https://stackoverflow.com/a/8662355
+            points = []
+            for ind in surroundinginds:
+                hdulist = fits.open(filelist[ind])
+                prf = hdulist[0].data
+                points.append((cols[ind],rows[ind],prf))
+                hdulist.close()
+            points = sorted(points)
+            (x1, y1, q11), (_x1, y2, q12), (x2, _y1, q21), (_x2, _y2, q22) = points
+
+            self.prf = (q11 * (x2 - colnum) * (y2 - rownum) +
+                        q21 * (colnum - x1) * (y2 -  rownum) +
+                        q12 * (x2 - colnum) * ( rownum - y1) +
+                        q22 * (colnum - x1) * ( rownum - y1)
+                        ) / ((x2 - x1) * (y2 - y1) + 0.0)
         
         ## Need to reshape PRF file for interpolation
         ## Add models just beyond pixel edges
